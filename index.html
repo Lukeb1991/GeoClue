@@ -647,7 +647,7 @@ function gradTitle(x, t, cx, y, size) {
   text(x, t, cx, y, font, g);
 }
 function footerLine(x, cx, y, size) {
-  const a = "A new daily geography puzzle from ", b = "Puzzl Lab";
+  const a = "A new daily geography puzzle from ", b = "Puzzl";
   const fa = `400 ${size}px 'DM Mono',monospace`, fb = `500 ${size}px 'DM Mono',monospace`;
   x.font = fa; const wa = x.measureText(a).width; x.font = fb; const wb = x.measureText(b).width;
   const sx = cx - (wa + wb) / 2; x.textAlign = "left";
