@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#061a24">
+<title>Geo Clue · Puzzl Lab</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🧭%3C/text%3E%3C/svg%3E">
+<meta name="description" content="Five clues. One country. Every day. A daily geography puzzle from Puzzl Lab.">
+<meta property="og:title" content="Geo Clue · Where in the world?">
+<meta property="og:description" content="Five clues. One country. Every day. A daily geography puzzle from Puzzl Lab.">
+<meta property="og:image" content="https://lukeb1991.github.io/GeoClue/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://lukeb1991.github.io/GeoClue/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://lukeb1991.github.io/GeoClue/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<style>
+:root{--deep:#061a24;--ocean:#0b2733;--ocean2:#0e2f3d;--sea:#2dd4bf;--parch:#f3e3c3;--ink:#2b1d0e;--rust:#e4572e;--rust2:#f0866a;--gold:#f5d08a;--muted:#9fb8bd;--text:#eef6f5;--line:#1f4a59;--pink:#ec4899;--purple:#a855f7;--serif:'DM Serif Display',Georgia,serif;--mono:'DM Mono',ui-monospace,monospace;--sans:'DM Sans',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font-family:var(--sans);color:var(--text);-webkit-font-smoothing:antialiased;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520' fill='none' stroke='%23ffffff' stroke-opacity='.05'%3E%3Cellipse cx='130' cy='140' rx='120' ry='80' transform='rotate(-20 130 140)'/%3E%3Cellipse cx='135' cy='138' rx='88' ry='56' transform='rotate(-14 135 138)'/%3E%3Cellipse cx='140' cy='136' rx='56' ry='34' transform='rotate(-8 140 136)'/%3E%3Cellipse cx='144' cy='134' rx='24' ry='14'/%3E%3Cellipse cx='390' cy='380' rx='110' ry='90' transform='rotate(25 390 380)'/%3E%3Cellipse cx='384' cy='384' rx='76' ry='60' transform='rotate(18 384 384)'/%3E%3Cellipse cx='378' cy='388' rx='42' ry='32' transform='rotate(10 378 388)'/%3E%3C/svg%3E"),radial-gradient(ellipse 120% 55% at 50% 0%,#135064 0%,var(--ocean) 45%,var(--deep) 80%) fixed,var(--deep)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 80px),repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 1px,transparent 1px 80px)}
+button{font:inherit}
+.wrap{position:relative;max-width:480px;margin:0 auto;padding:16px 16px 32px}
+.top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;height:44px}
+.top .l{display:flex;gap:8px}.top .r{display:flex;gap:8px;justify-content:flex-end}
+.icon{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--ocean2);color:var(--parch);font:500 16px var(--mono);cursor:pointer;display:grid;place-items:center}
+.icon svg{width:18px;height:18px}
+.kicker{font:500 12px var(--mono);letter-spacing:.3em;color:var(--parch);text-transform:uppercase;text-align:center}
+.compass{width:64px;height:64px;margin:8px auto 0}
+.compass svg{width:100%;height:100%;overflow:visible}
+#needle{transform-box:fill-box;transform-origin:center;animation:wobble 6s ease-in-out infinite;transition:transform .8s,opacity .8s}
+#needle.spin{animation:spin 1.1s cubic-bezier(.2,.8,.2,1)}
+#needle.found{animation:none;transform:rotate(0deg);filter:drop-shadow(0 0 6px rgba(45,212,191,.9))}
+#needle.lost{animation:none;transform:rotate(150deg);opacity:.5}
+@keyframes wobble{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(12deg)}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(720deg)}}
+h1{font:400 64px/1 var(--serif);text-align:center;margin-top:6px;background:linear-gradient(90deg,var(--purple),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{font:italic 400 24px var(--serif);color:var(--parch);text-align:center;margin-top:4px}
+.lives{display:flex;justify-content:center;gap:10px;margin:16px 0 22px}
+.pin{display:inline-block;width:20px;height:27px;transition:.4s}
+.pin svg{width:100%;height:100%}
+.pin path{fill:var(--rust)}.pin circle{fill:var(--parch)}
+.pin.lost{opacity:.3;transform:translateY(5px) rotate(-35deg) scale(.85)}
+.pin.lost path{fill:#5b6f75}
+.frame{position:relative;padding:8px;border:1px solid var(--parch);background:
+repeating-linear-gradient(90deg,var(--parch) 0 16px,var(--ocean) 16px 32px) top left/100% 6px no-repeat,
+repeating-linear-gradient(90deg,var(--parch) 0 16px,var(--ocean) 16px 32px) bottom left/100% 6px no-repeat,
+repeating-linear-gradient(180deg,var(--parch) 0 16px,var(--ocean) 16px 32px) top left/6px 100% no-repeat,
+repeating-linear-gradient(180deg,var(--parch) 0 16px,var(--ocean) 16px 32px) top right/6px 100% no-repeat,var(--ocean)}
+.north{position:absolute;top:-12px;left:50%;transform:translateX(-50%);width:24px;height:24px;border-radius:50%;background:var(--parch);color:var(--ink);font:500 11px/24px var(--mono);text-align:center;z-index:2}
+.inner{position:relative;background:var(--ocean2);border:1px solid rgba(243,227,195,.5);padding:6px}
+.inner::before{content:"";position:absolute;left:29px;top:26px;bottom:26px;border-left:2px dashed rgba(243,227,195,.22)}
+.clue{position:relative;display:flex;gap:12px;padding:12px 10px}
+.clue.fresh{animation:in .45s ease both}
+.num{position:relative;z-index:1;flex:0 0 28px;height:28px;border-radius:50%;background:var(--ocean2);border:2px solid var(--sea);color:var(--sea);font:500 12px/24px var(--mono);text-align:center}
+.lab{font:500 10px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.lab em{font-style:normal;color:var(--sea)}
+.txt{font:400 17px/1.4 var(--serif);color:var(--text)}
+.clue.locked{opacity:.55}
+.clue.locked .num{border:2px dashed rgba(243,227,195,.35);color:var(--muted)}
+.clue.locked .txt{font:italic 400 15px var(--serif);color:var(--muted)}
+.flag{display:block;width:120px;border:3px solid var(--parch);border-radius:2px;box-shadow:0 4px 10px rgba(0,0,0,.35);margin-top:4px}
+.guessrow{display:flex;gap:8px;margin-top:20px}
+.ac{position:relative;flex:1;min-width:0;display:flex}
+input{width:100%;min-width:0;height:52px;border-radius:14px;border:1.5px solid var(--line);background:#08212c;color:var(--text);font:500 17px var(--sans);padding:0 16px;outline:none}
+input::placeholder{color:#6f8c93}
+input:focus{border-color:var(--sea);box-shadow:0 0 0 3px rgba(45,212,191,.18)}
+.ac-list{position:absolute;left:0;right:0;bottom:calc(100% + 6px);list-style:none;z-index:20;background:var(--ocean2);border:1px solid rgba(243,227,195,.55);border-radius:12px;overflow:hidden;box-shadow:0 -12px 30px rgba(0,0,0,.5)}
+.ac-list[hidden]{display:none}
+.ac-list li{display:flex;align-items:center;gap:10px;padding:12px 14px;font:500 16px var(--sans);cursor:pointer;border-top:1px solid rgba(243,227,195,.12)}
+.ac-list li:first-child{border-top:0}
+.ac-list li::before{content:"";flex:0 0 9px;height:12px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 32'%3E%3Cpath d='M12 31s10-11.3 10-19A10 10 0 0 0 2 12c0 7.7 10 19 10 19z' fill='%23e4572e'/%3E%3C/svg%3E") center/contain no-repeat;opacity:.8}
+.ac-list li[aria-selected="true"],.ac-list li:hover{background:rgba(45,212,191,.16)}
+.ac-list mark{background:none;color:var(--gold);font-weight:700}
+.btn{height:52px;border:0;border-radius:14px;padding:0 20px;font:700 15px var(--sans);color:#fff;background:linear-gradient(90deg,var(--purple),var(--pink));cursor:pointer;touch-action:manipulation;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.btn svg{width:13px;height:17px}.btn svg path{fill:#fff}.btn svg circle{fill:var(--pink)}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:transparent;border:1.5px solid var(--ink);color:var(--ink)}
+.msg{min-height:22px;text-align:center;font:500 14px var(--sans);color:var(--muted);margin-top:10px}
+.msg.bad{color:var(--rust2)}
+.stamps{display:flex;flex-wrap:wrap;gap:12px 14px;justify-content:center;margin-top:8px}
+.stamp{display:inline-flex;flex-direction:column;align-items:center;padding:8px 14px 6px;border:2px solid currentColor;outline:1px solid currentColor;outline-offset:-6px;border-radius:8px;transform:rotate(var(--r));font:500 13px var(--mono);text-transform:uppercase;letter-spacing:.08em;line-height:1.25}
+.stamp b{font-weight:500}
+.stamp small{font-size:9px;letter-spacing:.22em;opacity:.8}
+.stamp.no{color:var(--rust2)}.stamp.ok{color:var(--sea)}
+.stamp.new{animation:stampIn .35s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes stampIn{from{opacity:0;transform:rotate(var(--r)) scale(1.8)}to{opacity:1;transform:rotate(var(--r)) scale(1)}}
+.result{position:relative;margin-top:24px;text-align:center;color:var(--ink);background:repeating-linear-gradient(0deg,rgba(91,64,30,.07) 0 1px,transparent 1px 26px),var(--parch);border-radius:6px;padding:22px 18px;box-shadow:0 18px 40px rgba(0,0,0,.45);animation:in .5s ease both}
+.result::before{content:"";position:absolute;inset:8px;border:1px solid rgba(43,29,14,.25);border-radius:3px;pointer-events:none}
+.result .lab{color:#8a5a2b}
+.globe{width:190px;height:190px;margin:2px auto 8px}
+.globe svg{width:100%;height:100%;display:block}
+.g-sea{fill:#0e3a4a}.g-grat{fill:none;stroke:rgba(243,227,195,.18);stroke-width:.6}.g-land{fill:#d9b77e;stroke:#7a5a2c;stroke-width:.4}.g-out{fill:none;stroke:var(--ink);stroke-width:1.5}
+.g-dot{fill:var(--rust);stroke:#fff;stroke-width:1.5}
+.g-pulse{fill:rgba(228,87,46,.45);transform-box:fill-box;transform-origin:center;animation:pulse 1.6s ease-out infinite}
+@keyframes pulse{from{transform:scale(.6);opacity:1}to{transform:scale(2.6);opacity:0}}
+.big-stamp{display:inline-block;margin:4px 0 12px;padding:9px 16px;border:3px solid currentColor;outline:1.5px solid currentColor;outline-offset:-8px;border-radius:10px;font:500 13px var(--mono);letter-spacing:.2em;text-transform:uppercase;transform:rotate(-4deg);color:#0f766e;animation:stampIn .4s .3s cubic-bezier(.3,1.6,.5,1) both;--r:-4deg}
+.big-stamp.lost{color:#b8401f}
+.answer{font:400 40px/1.1 var(--serif);margin:4px 0 12px;color:#1d1408}
+.result .flag{margin:0 auto;border-color:#fff}
+.meta{font:500 12px var(--mono);color:#6b5435;margin-top:12px;letter-spacing:.04em}
+.squares{display:flex;justify-content:center;gap:6px;margin:14px 0 10px}
+.sq{width:30px;height:30px;border-radius:7px;background:#d9c6a0}
+.sq.ok{background:#14b8a6}.sq.no{background:var(--rust)}
+.btns{position:relative;display:flex;gap:8px;margin-top:16px}.btns .btn{flex:1}
+.next{font:500 13px var(--mono);color:#6b5435;margin-top:16px;letter-spacing:.05em}
+.next b{color:#b8401f;font-weight:500}
+footer{text-align:center;font:400 12px var(--mono);color:var(--muted);margin-top:28px}
+footer b{color:#fff;font-weight:500}
+.modal{position:fixed;inset:0;background:rgba(3,12,17,.75);display:none;align-items:center;justify-content:center;padding:20px;z-index:20}
+.modal.open{display:flex}
+.sheet{width:100%;max-width:420px;background:var(--ocean2);border:1px solid var(--parch);border-radius:6px;padding:22px;position:relative;animation:in .3s ease both}
+.sheet h2{font:400 30px var(--serif);margin-bottom:12px}
+.sheet p{font:400 15px/1.55 var(--sans);color:#d5e4e6;margin-bottom:10px}
+.close{position:absolute;top:12px;right:12px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;margin:8px 0 16px}
+.stats b{display:block;font:400 30px var(--serif)}
+.stats span{font:500 10px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.bar{display:flex;align-items:center;gap:8px;margin:5px 0;font:500 13px var(--mono)}
+.bar span{width:12px}
+.bar i{display:block;height:20px;min-width:24px;border-radius:4px;background:#12404f;font-style:normal;text-align:right;padding-right:7px;line-height:20px}
+.bar i.hl{background:linear-gradient(90deg,var(--purple),var(--pink))}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:var(--parch);color:var(--ink);font:700 14px var(--sans);padding:10px 18px;border-radius:999px;opacity:0;transition:.25s;pointer-events:none;z-index:30}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.shake{animation:shake .35s}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.og{padding:20px;text-align:center}.og canvas{width:100%;max-width:1200px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="top">
+    <div class="l"><button class="icon" id="helpBtn" aria-label="How to play">?</button></div>
+    <span class="kicker" id="kicker">Expedition</span>
+    <div class="r">
+      <button class="icon" id="soundBtn" aria-label="Sound on" aria-pressed="true"></button>
+      <button class="icon" id="statsBtn" aria-label="Your stats">▤</button>
+    </div>
+  </div>
+  <div class="compass" aria-hidden="true">
+    <svg viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="46" fill="#0e2f3d" stroke="#f3e3c3" stroke-width="2"/>
+      <circle cx="50" cy="50" r="37" fill="none" stroke="#f3e3c3" stroke-opacity=".35"/>
+      <g stroke="#f3e3c3" stroke-width="2"><line x1="50" y1="4" x2="50" y2="11"/><line x1="96" y1="50" x2="89" y2="50"/><line x1="50" y1="96" x2="50" y2="89"/><line x1="4" y1="50" x2="11" y2="50"/></g>
+      <g stroke="#f3e3c3" stroke-opacity=".5" stroke-width="1.5"><line x1="82.5" y1="17.5" x2="78.3" y2="21.7"/><line x1="82.5" y1="82.5" x2="78.3" y2="78.3"/><line x1="17.5" y1="82.5" x2="21.7" y2="78.3"/><line x1="17.5" y1="17.5" x2="21.7" y2="21.7"/></g>
+      <text x="50" y="22" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#f3e3c3">N</text>
+      <g id="needle"><path d="M50 26 L56 50 L44 50Z" fill="#e4572e"/><path d="M50 74 L56 50 L44 50Z" fill="#f3e3c3"/><circle cx="50" cy="50" r="4" fill="#0b2733" stroke="#f3e3c3"/></g>
+    </svg>
+  </div>
+  <h1>Geo Clue</h1>
+  <p class="sub">Where in the world?</p>
+  <div class="lives" id="lives" aria-label="Lives remaining"></div>
+  <section class="frame" id="frame"><span class="north">N</span><div class="inner" id="clues"></div></section>
+  <div id="play">
+    <form class="guessrow" id="form" autocomplete="off">
+      <div class="ac">
+        <input id="guess" type="text" placeholder="Start typing a country" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go"
+          role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="acList" aria-label="Your guess">
+        <ul class="ac-list" id="acList" role="listbox" hidden></ul>
+      </div>
+      <button class="btn" type="submit"><svg viewBox="0 0 24 32" aria-hidden="true"><path d="M12 31s10-11.3 10-19A10 10 0 0 0 2 12c0 7.7 10 19 10 19z"/><circle cx="12" cy="12" r="4"/></svg>Pin it</button>
+    </form>
+    <p class="msg" id="msg"></p>
+  </div>
+  <div class="stamps" id="guesses"></div>
+  <section class="result" id="result" hidden></section>
+  <footer>A new daily geography puzzle from <b>Puzzl Lab</b></footer>
+</main>
+
+<div class="modal" id="helpModal"><div class="sheet">
+  <button class="icon close" data-close aria-label="Close">✕</button>
+  <h2>Your expedition</h2>
+  <p>Find today's country in five tries or fewer.</p>
+  <p>You start with the hardest clue. Every wrong guess costs a pin and unlocks the next clue, ending with the flag.</p>
+  <p>Start typing and pick a country from the list. Everyone gets the same country, and a new expedition starts every day at 7am UK time.</p>
+  <button class="btn" style="width:100%" data-close>Set off</button>
+</div></div>
+
+<div class="modal" id="statsModal"><div class="sheet">
+  <button class="icon close" data-close aria-label="Close">✕</button>
+  <h2>Explorer's log</h2>
+  <div class="stats" id="statsGrid"></div>
+  <div class="lab">Found in</div>
+  <div id="dist"></div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- Puzzle countries (daily answers) ---------- */
+const COUNTRIES = [
+  {n:"Morocco",c:"ma",cap:"Rabat",ll:[34.0,-6.8],a:[],k:["Home to the Noor Ouarzazate complex, one of the world's largest concentrated solar power plants","A French protectorate until 1956; Arabic and Amazigh (Berber) are both official languages","A North African constitutional monarchy whose king is also titled Commander of the Faithful","Its biggest city is Casablanca, and it sits just 14km from Spain across the Strait of Gibraltar"]},
+  {n:"Uruguay",c:"uy",cap:"Montevideo",ll:[-34.9,-56.2],a:[],k:["In 2013 it became the first country in the world to fully legalise the cannabis market","It hosted and won the very first FIFA World Cup, in 1930","A small South American republic once nicknamed 'the Switzerland of South America'","It sits between Brazil and Argentina, with the beach resort of Punta del Este on its coast"]},
+  {n:"Slovenia",c:"si",cap:"Ljubljana",ll:[46.1,14.5],a:[],k:["Home to the Škocjan Caves, which hold one of the largest known underground canyons in the world","Its language is one of the few that still has a 'dual' form, used for exactly two of something","The first former Yugoslav republic to join the EU, in 2004","It borders Italy, Austria, Hungary and Croatia, and is home to the lakeside town of Bled"]},
+  {n:"Bhutan",c:"bt",cap:"Thimphu",ll:[27.5,89.6],a:[],k:["It measures Gross National Happiness and is one of the few carbon-negative countries on Earth","Television and the internet were only allowed here in 1999","A Himalayan kingdom that became a constitutional monarchy in 2008","It sits between China and India; its old capital, Punakha, has a famous riverside fortress"]},
+  {n:"Estonia",c:"ee",cap:"Tallinn",ll:[59.4,24.7],a:[],k:["The software behind Skype was written by developers here","It offers 'e-residency', letting anyone in the world run a company here entirely online","A Baltic state whose language is related to Finnish rather than to its neighbours' languages","It borders Latvia and Russia, and its historic university city is Tartu"]},
+  {n:"Laos",c:"la",cap:"Vientiane",ll:[18.0,102.6],a:["lao pdr","lao"],k:["Per person, it is the most heavily bombed country in history, from the 1960s and 70s","Its old kingdom was Lan Xang, the 'Land of a Million Elephants'","The only landlocked country in Southeast Asia","It borders Thailand, Vietnam, Cambodia, China and Myanmar, with the old royal city of Luang Prabang"]},
+  {n:"Madagascar",c:"mg",cap:"Antananarivo",ll:[-18.9,47.5],a:[],k:["Lemurs live naturally nowhere else on Earth","A French colony until 1960; its people descend from both Africans and seafarers from Borneo","The fourth-largest island in the world, in the Indian Ocean","The Mozambique Channel separates it from Africa, and its main port is Toamasina"]},
+  {n:"Fiji",c:"fj",cap:"Suva",ll:[-18.1,178.4],a:[],k:["On one of its islands, villagers famously walk barefoot across white-hot stones","A British colony until 1970; Indian labourers were brought over to work its sugar plantations","A Pacific nation whose rugby sevens team won its first ever Olympic medal, a gold, in 2016","It lies east of Vanuatu and west of Tonga, with its capital at Suva"]},
+  {n:"Oman",c:"om",cap:"Muscat",ll:[23.6,58.4],a:[],k:["Its southern Dhofar region has supplied frankincense for thousands of years","Ruled for 50 years by Sultan Qaboos, it's known for quietly mediating between rival powers","An Arabian sultanate that once ruled Zanzibar and parts of the East African coast","It borders the UAE, Saudi Arabia and Yemen, with the mountain town of Nizwa and capital Muscat"]},
+  {n:"Papua New Guinea",c:"pg",cap:"Port Moresby",ll:[-9.4,147.2],a:["png"],k:["Over 800 languages are spoken here, more than in any other country","Home to the Queen Alexandra's birdwing, the largest butterfly in the world","It covers the eastern half of the world's second-largest island","It borders Indonesia, with the highland town of Mount Hagen and capital Port Moresby"]},
+  {n:"Andorra",c:"ad",cap:"Andorra la Vella",ll:[42.5,1.5],a:[],k:["It has no army and is headed by two co-princes, one of whom is the President of France","Its only official language is Catalan","A tiny European microstate known for duty-free shopping and skiing","Tucked into the Pyrenees between France and Spain"]},
+  {n:"Mauritius",c:"mu",cap:"Port Louis",ll:[-20.2,57.5],a:[],k:["The dodo lived only here, and was extinct within a century of people arriving","Ruled by the Dutch, the French and then the British before independence in 1968","An Indian Ocean island nation where Hinduism is the largest religion","It lies east of Madagascar, with its capital at Port Louis"]},
+  {n:"Seychelles",c:"sc",cap:"Victoria",ll:[-4.6,55.5],a:["the seychelles"],k:["Home to the coco de mer, the palm with the heaviest seed in the world","A French and then British colony, it became independent in 1976","An archipelago of 115 islands, and the least populous country in Africa","Northeast of Madagascar in the Indian Ocean, with its capital Victoria on Mahé"]},
+  {n:"Montenegro",c:"me",cap:"Podgorica",ll:[42.4,19.3],a:[],k:["Its Bay of Kotor is often called southern Europe's fjord, though it's really a sunken river canyon","It uses the euro, despite not being a member of the EU","A small Balkan country that split peacefully from Serbia in 2006","On the Adriatic coast between Croatia and Albania, with its capital at Podgorica"]},
+  {n:"Cyprus",c:"cy",cap:"Nicosia",ll:[35.2,33.4],a:[],k:["Its sweet Commandaria is said to be the oldest named wine still being made","A British colony until 1960; Greek myth says Aphrodite rose from the sea off its coast","An EU island in the eastern Mediterranean that has been divided since 1974","Its capital, Nicosia, is often called the last divided capital in the world"]},
+  {n:"Iceland",c:"is",cap:"Reykjavík",ll:[64.1,-21.9],a:[],k:["Its parliament, founded in 930 AD, is one of the oldest still running, and it has no standing army","Ruled by Denmark until 1944, its people can still read sagas written around 800 years ago","A volcanic island in the North Atlantic, sitting right on the Mid-Atlantic Ridge","Home to the Blue Lagoon, the geysers of the Golden Circle and the capital, Reykjavík"]},
+  {n:"Portugal",c:"pt",cap:"Lisbon",ll:[38.7,-9.1],a:[],k:["It produces around half of all the world's cork","Its alliance with England, signed in 1373, is the oldest in the world still in force","The westernmost country of mainland Europe","Home to Porto, the Algarve coast and the capital, Lisbon"]},
+  {n:"Vietnam",c:"vn",cap:"Hanoi",ll:[21.0,105.8],a:["viet nam"],k:["Home to Son Doong, the largest known cave passage on Earth, big enough to have its own jungle","Once part of French Indochina, it was reunited as one country in 1976 after decades of war","A long, S-shaped Southeast Asian country and the world's second-biggest coffee producer","Ha Long Bay, Ho Chi Minh City and the capital, Hanoi"]},
+  {n:"Peru",c:"pe",cap:"Lima",ll:[-12.0,-77.0],a:[],k:["The potato was first farmed in this region, and thousands of varieties still grow in its highlands","Once the heart of the Inca Empire, it was conquered by Spain in the 1530s","A South American country that shares Lake Titicaca with Bolivia","Machu Picchu, the city of Cusco and the capital, Lima"]},
+  {n:"New Zealand",c:"nz",cap:"Wellington",ll:[-41.3,174.8],a:["nz","aotearoa"],k:["In 1893 it became the first self-governing country where women could vote in national elections","Its founding document, the Treaty of Waitangi, was signed by Māori chiefs and the British Crown in 1840","An island nation in the South Pacific, around 2,000km southeast of Australia","Rotorua's geysers, Milford Sound and the capital, Wellington"]},
+  {n:"Kenya",c:"ke",cap:"Nairobi",ll:[-1.3,36.8],a:[],k:["M-Pesa, one of the world's first big mobile money services, launched here in 2007","A British colony until 1963; its first president was Jomo Kenyatta","An East African country that sits right on the equator","The Maasai Mara, the port of Mombasa and the capital, Nairobi"]},
+  {n:"Chile",c:"cl",cap:"Santiago",ll:[-33.4,-70.7],a:[],k:["Its Atacama Desert is one of the driest places on Earth; some weather stations there have never recorded rain","In 1888 it took control of Easter Island and its giant moai statues","The longest country from north to south, about 4,300km, but rarely more than 350km wide","Patagonia, the port of Valparaíso and the capital, Santiago"]},
+  {n:"Croatia",c:"hr",cap:"Zagreb",ll:[45.8,16.0],a:[],k:["The necktie takes its name from scarves worn by its soldiers in 17th-century France","Part of Yugoslavia until it declared independence in 1991","A Balkan country with over 1,000 islands along the Adriatic","Dubrovnik's city walls, the port of Split and the capital, Zagreb"]},
+  {n:"Jordan",c:"jo",cap:"Amman",ll:[31.9,35.9],a:[],k:["The Dead Sea on its border is the lowest point on land, about 430 metres below sea level","Independent from Britain since 1946, it is ruled by the Hashemite royal family","A Middle Eastern kingdom whose only coastline is a short stretch of the Red Sea at Aqaba","The rock-cut city of Petra, the Wadi Rum desert and the capital, Amman"]},
+  {n:"Sri Lanka",c:"lk",cap:"Sri Jayawardenepura Kotte",ll:[6.9,79.9],a:["ceylon"],k:["In 1960 it elected the world's first female prime minister, Sirimavo Bandaranaike","Under British rule until 1948, it was known as Ceylon until 1972","A teardrop-shaped island in the Indian Ocean, just off India's southern tip","The rock fortress of Sigiriya, the hill city of Kandy and its biggest city, Colombo"]},
+  {n:"Norway",c:"no",cap:"Oslo",ll:[59.9,10.8],a:[],k:["Every year it gives London a Christmas tree for Trafalgar Square, as thanks for help in World War II","In 1911 an expedition from here was the first to reach the South Pole","A Scandinavian country that stayed out of the EU and grew rich from North Sea oil","Its fjords, the city of Bergen and the capital, Oslo"]},
+  {n:"Cuba",c:"cu",cap:"Havana",ll:[23.1,-82.4],a:[],k:["The bee hummingbird, the smallest bird in the world, lives only here","Its 1959 revolution brought Fidel Castro to power","The largest island in the Caribbean","Vintage American cars, the old town of Trinidad and the capital, Havana"]},
+  {n:"Mongolia",c:"mn",cap:"Ulaanbaatar",ll:[47.9,106.9],a:[],k:["It is the most sparsely populated country in the world","Genghis Khan founded an empire here in 1206 that became the largest connected land empire in history","A landlocked country squeezed between Russia and China","The Gobi Desert, nomads' gers and the capital, Ulaanbaatar"]},
+  {n:"Nepal",c:"np",cap:"Kathmandu",ll:[27.7,85.3],a:[],k:["Eight of the world's ten highest mountains stand within or on the borders of this country","It became a republic in 2008, ending a royal dynasty that had ruled for 240 years","A landlocked Himalayan country between India and China","Mount Everest, the lakeside city of Pokhara and the capital, Kathmandu"]},
+  {n:"Belgium",c:"be",cap:"Brussels",ll:[50.8,4.4],a:[],k:["The saxophone was invented here, by Adolphe Sax in the 1840s","It broke away from the Netherlands to become independent in 1830","A small Western European country with three official languages: Dutch, French and German","The canals of Bruges, the port of Antwerp and the capital, Brussels"]}
+];
+
+/* ---------- Every country players can pick from (answers are mixed in) ---------- */
+const ALL_COUNTRIES = "Afghanistan|Albania|Algeria|Andorra|Angola|Antigua and Barbuda|Argentina|Armenia|Australia|Austria|Azerbaijan|Bahamas=the bahamas|Bahrain|Bangladesh|Barbados|Belarus|Belgium|Belize|Benin|Bhutan|Bolivia|Bosnia and Herzegovina=bosnia|Botswana|Brazil|Brunei|Bulgaria|Burkina Faso|Burundi|Cambodia|Cameroon|Canada|Cape Verde=cabo verde|Central African Republic|Chad|Chile|China|Colombia|Comoros|Congo=republic of the congo,congo brazzaville|Costa Rica|Croatia|Cuba|Cyprus|Czechia=czech republic|Democratic Republic of the Congo=dr congo,drc,congo kinshasa|Denmark|Djibouti|Dominica|Dominican Republic|Ecuador|Egypt|El Salvador|England|Equatorial Guinea|Eritrea|Estonia|Eswatini=swaziland|Ethiopia|Fiji|Finland|France|Gabon|Gambia=the gambia|Georgia|Germany|Ghana|Greece|Greenland|Grenada|Guatemala|Guinea|Guinea-Bissau|Guyana|Haiti|Honduras|Hungary|Iceland|India|Indonesia|Iran|Iraq|Ireland=eire,republic of ireland|Israel|Italy|Ivory Coast=cote d'ivoire|Jamaica|Japan|Jordan|Kazakhstan|Kenya|Kiribati|Kosovo|Kuwait|Kyrgyzstan|Laos|Latvia|Lebanon|Lesotho|Liberia|Libya|Liechtenstein|Lithuania|Luxembourg|Madagascar|Malawi|Malaysia|Maldives|Mali|Malta|Marshall Islands|Mauritania|Mauritius|Mexico|Micronesia|Moldova|Monaco|Mongolia|Montenegro|Morocco|Mozambique|Myanmar=burma|Namibia|Nauru|Nepal|Netherlands=holland,the netherlands|New Zealand|Nicaragua|Niger|Nigeria|North Korea=dprk|North Macedonia=macedonia|Northern Ireland|Norway|Oman|Pakistan|Palau|Palestine|Panama|Papua New Guinea|Paraguay|Peru|Philippines|Poland|Portugal|Puerto Rico|Qatar|Romania|Russia|Rwanda|Saint Kitts and Nevis|Saint Lucia|Saint Vincent and the Grenadines|Samoa|San Marino|São Tomé and Príncipe=sao tome|Saudi Arabia|Scotland|Senegal|Serbia|Seychelles|Sierra Leone|Singapore|Slovakia|Slovenia|Solomon Islands|Somalia|South Africa|South Korea=korea|South Sudan|Spain|Sri Lanka|Sudan|Suriname|Sweden|Switzerland|Syria|Taiwan|Tajikistan|Tanzania|Thailand|Timor-Leste=east timor|Togo|Tonga|Trinidad and Tobago|Tunisia|Turkey=turkiye|Turkmenistan|Tuvalu|Uganda|Ukraine|United Arab Emirates=uae|United Kingdom=uk,britain,great britain|United States=usa,us,america,united states of america|Uruguay|Uzbekistan|Vanuatu|Vatican City=vatican,holy see|Venezuela|Vietnam|Wales|Yemen|Zambia|Zimbabwe";
+
+const LABELS = ["Field note","History","Region","Landmarks","Flag"];
+const ROT = [-4, 3, -2, 5, -3];
+const MAX = 5;
+const LAUNCH = Date.UTC(2026, 9, 5) / 864e5;
+const SITE = "lukeb1991.github.io/GeoClue";
+const PIN = '<svg viewBox="0 0 24 32" aria-hidden="true"><path d="M12 31s10-11.3 10-19A10 10 0 0 0 2 12c0 7.7 10 19 10 19z"/><circle cx="12" cy="12" r="4"/></svg>';
+const $ = id => document.getElementById(id);
+const pick = a => a[Math.random() * a.length | 0];
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const esc = s => String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const fmtLL = ([la, lo]) => `${Math.abs(la).toFixed(1)}°${la >= 0 ? "N" : "S"} ${Math.abs(lo).toFixed(1)}°${lo >= 0 ? "E" : "W"}`;
+
+function london(d = new Date()) {
+  const f = new Intl.DateTimeFormat("en-GB", {timeZone:"Europe/London",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"});
+  const p = {}; f.formatToParts(d).forEach(x => p[x.type] = x.value);
+  return {y:+p.year, m:+p.month, d:+p.day, h:(+p.hour) % 24, mi:+p.minute, s:+p.second};
+}
+function puzzleNo() {
+  const p = london();
+  let day = Date.UTC(p.y, p.m - 1, p.d) / 864e5;
+  if (p.h < 7) day--;
+  return Math.max(1, day - LAUNCH + 1);
+}
+function secsToReset() {
+  const p = london();
+  let d = 7 * 3600 - (p.h * 3600 + p.mi * 60 + p.s);
+  if (d <= 0) d += 86400;
+  return d;
+}
+function rng(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function order(cy) {
+  const r = rng(9071 + cy * 7919), o = COUNTRIES.map((_, i) => i);
+  for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; }
+  return o;
+}
+function countryFor(n) {
+  const L = COUNTRIES.length, i = n - 1, cy = Math.floor(i / L), o = order(cy);
+  if (cy > 0 && o[0] === order(cy - 1)[L - 1]) [o[0], o[1]] = [o[1], o[0]];
+  return COUNTRIES[o[i % L]];
+}
+function norm(s) {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/&/g, " and ").replace(/[^a-z0-9 ]/g, " ").replace(/\bthe\b/g, " ")
+    .replace(/\s+/g, " ").trim();
+}
+function lev(a, b) {
+  let p = Array.from({length: b.length + 1}, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const c = [i];
+    for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    p = c;
+  }
+  return p[b.length];
+}
+
+/* Build the pick list: name + other names it can be found by */
+const PICKS = (() => {
+  const map = new Map();
+  ALL_COUNTRIES.split("|").forEach(e => {
+    const [name, alts] = e.split("=");
+    map.set(name, {name, n: norm(name), alts: (alts ? alts.split(",") : []).map(norm)});
+  });
+  COUNTRIES.forEach(c => {
+    if (!map.has(c.n)) map.set(c.n, {name: c.n, n: norm(c.n), alts: []});
+    const p = map.get(c.n); c.a.forEach(a => { const x = norm(a); if (!p.alts.includes(x)) p.alts.push(x); });
+  });
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+})();
+
+/* Turn whatever was typed into a country name, or null if it isn't one */
+function resolve(text) {
+  const t = norm(text); if (!t) return null;
+  const exact = PICKS.find(p => p.n === t || p.alts.includes(t));
+  if (exact) return exact.name;
+  let best = null, bestD = 99;
+  PICKS.forEach(p => [p.n, ...p.alts].forEach(o => {
+    if (o.length < 5) return;
+    const d = lev(o, t), lim = o.length >= 10 ? 2 : 1;
+    if (d <= lim && d < bestD) { best = p.name; bestD = d; }
+  }));
+  return best;
+}
+
+/* ---------- Sound effects (made in the browser, no files needed) ---------- */
+const SFX = {
+  on: store.get("geoclue-sound", true), ctx: null, out: null,
+  ready() {
+    if (!this.on) return null;
+    if (!this.ctx) {
+      const A = window.AudioContext || window.webkitAudioContext; if (!A) return null;
+      this.ctx = new A(); this.out = this.ctx.createGain(); this.out.gain.value = .55; this.out.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === "suspended") this.ctx.resume();
+    return this.ctx;
+  },
+  tone(f, at, dur, type = "sine", vol = .2, f2) {
+    const c = this.ctx, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, at);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, at + dur);
+    g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(vol, at + .012); g.gain.exponentialRampToValueAtTime(.0001, at + dur);
+    o.connect(g); g.connect(this.out); o.start(at); o.stop(at + dur + .05);
+  },
+  noise(at, dur, vol, freq, freq2, q = 1) {
+    const c = this.ctx, len = Math.ceil(c.sampleRate * dur), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    s.buffer = buf; f.type = "bandpass"; f.Q.value = q; f.frequency.setValueAtTime(freq, at);
+    if (freq2) f.frequency.exponentialRampToValueAtTime(freq2, at + dur);
+    g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(vol, at + .02); g.gain.exponentialRampToValueAtTime(.0001, at + dur);
+    s.connect(f); f.connect(g); g.connect(this.out); s.start(at); s.stop(at + dur + .05);
+  },
+  play(name) {
+    const c = this.ready(); if (!c) return;
+    const t = c.currentTime + .01;
+    switch (name) {
+      case "tick": this.tone(1400, t, .05, "triangle", .05); break;
+      case "pin": this.tone(220, t, .12, "sine", .3, 90); this.noise(t, .06, .25, 2500); break;
+      case "stamp": this.noise(t, .09, .5, 400, 0, .7); this.tone(120, t, .1, "sine", .35, 70); break;
+      case "wrong":
+        this.tone(311, t + .05, .18, "triangle", .16); this.tone(233, t + .2, .3, "triangle", .16);
+        this.noise(t + .1, .7, .1, 600, 2400, 2);
+        this.tone(659, t + .75, .35, "sine", .1); this.tone(880, t + .87, .45, "sine", .09);
+        break;
+      case "win":
+        [523, 659, 784, 1047].forEach((f, i) => this.tone(f, t + .1 + i * .1, .35, "triangle", .16));
+        this.tone(1319, t + .55, .9, "sine", .1); this.tone(1568, t + .62, .9, "sine", .07);
+        this.noise(t + .5, .9, .05, 6000, 9000, 1);
+        break;
+      case "lose":
+        [392, 330, 262].forEach((f, i) => this.tone(f, t + .1 + i * .22, .4, "triangle", .15));
+        this.tone(131, t + .76, .9, "sine", .2); this.noise(t + .2, 1.2, .06, 400, 180, 1.5);
+        break;
+      case "page": this.noise(t, .25, .12, 3000, 1200, .8); break;
+    }
+  }
+};
+function soundIcon() {
+  const b = $("soundBtn");
+  b.innerHTML = SFX.on
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+  b.setAttribute("aria-label", SFX.on ? "Sound on" : "Sound off");
+  b.setAttribute("aria-pressed", SFX.on);
+}
+
+/* ---------- Game state ---------- */
+const N = puzzleNo(), C = countryFor(N), DAYKEY = "geoclue-v2-" + N;
+let day = store.get(DAYKEY, null);
+if (!day || day.c !== C.n) day = {c: C.n, guesses: [], status: "playing"};
+let stats = store.get("geoclue-stats", {played:0, won:0, streak:0, max:0, lastPlayed:0, lastWon:0, dist:[0,0,0,0,0]});
+let lastShown = 0, lastGuessCount = day.guesses.length;
+const flagUrl = c => `https://flagcdn.com/w320/${c}.png`;
+const wrongCount = () => day.guesses.filter(g => !g.ok).length;
+const streakNow = () => stats.lastWon >= N - 1 ? stats.streak : 0;
+
+function say(t, bad) { const m = $("msg"); m.textContent = t; m.className = "msg" + (bad ? " bad" : ""); }
+function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), 1800); }
+function openM(id) { SFX.play("page"); $(id).classList.add("open"); }
+function needle(state) {
+  const n = $("needle"); n.classList.remove("spin", "found", "lost");
+  if (state === "spin") { void n.getBoundingClientRect(); n.classList.add("spin"); }
+  else if (state) n.classList.add(state);
+}
+
+function render() {
+  $("kicker").textContent = "Expedition No. " + N;
+  const done = day.status !== "playing", wrong = wrongCount();
+  const shown = done ? MAX : Math.min(MAX, 1 + wrong);
+  $("lives").innerHTML = Array.from({length: MAX}, (_, i) => `<span class="pin${i < MAX - wrong ? "" : " lost"}">${PIN}</span>`).join("");
+  $("clues").innerHTML = [...C.k, null].map((txt, i) => {
+    const lock = i >= shown, fresh = !lock && i >= lastShown;
+    const lab = lock ? "Uncharted" : `Clue ${i + 1} · <em>${LABELS[i]}</em>`;
+    const body = lock ? `Unlocks after ${i} wrong guess${i > 1 ? "es" : ""}`
+      : (i === 4 ? `<img class="flag" src="${flagUrl(C.c)}" alt="Flag clue">` : esc(txt));
+    return `<div class="clue${lock ? " locked" : ""}${fresh ? " fresh" : ""}" style="animation-delay:${fresh ? (i - lastShown) * 0.06 : 0}s">
+      <div class="num">${i + 1}</div>
+      <div><div class="lab">${lab}</div><div class="txt">${body}</div></div></div>`;
+  }).join("");
+  lastShown = shown;
+  $("play").hidden = done;
+  $("guesses").innerHTML = day.guesses.map((g, i) =>
+    `<span class="stamp ${g.ok ? "ok" : "no"}${i >= lastGuessCount ? " new" : ""}" style="--r:${ROT[i % 5]}deg"><b>${esc(g.t)}</b><small>${g.ok ? "Found" : "Not here"}</small></span>`).join("");
+  lastGuessCount = day.guesses.length;
+  if (!done) { $("result").hidden = true; return; }
+
+  const won = day.status === "won", used = day.guesses.length, st = streakNow();
+  needle(won ? "found" : "lost");
+  const squares = Array.from({length: MAX}, (_, i) => `<span class="sq ${i < used ? (day.guesses[i].ok ? "ok" : "no") : ""}"></span>`).join("");
+  $("result").hidden = false;
+  $("result").innerHTML = `
+    <div class="globe" id="globe"></div>
+    <div class="big-stamp${won ? "" : " lost"}">${won ? `Destination reached · ${used}/${MAX}` : "Lost at sea"}</div>
+    <div class="lab">${won ? "You found" : "Today's country was"}</div>
+    <div class="answer">${esc(C.n)}</div>
+    <img class="flag" src="${flagUrl(C.c)}" alt="Flag of ${esc(C.n)}">
+    <div class="meta">Capital: ${esc(C.cap)} · ${fmtLL(C.ll)}</div>
+    <div class="squares">${squares}</div>
+    <div class="lab">${won ? `Streak: ${st}` : "Streak reset · new expedition tomorrow"}</div>
+    <div class="btns"><button class="btn" id="shareImg">Share image</button><button class="btn ghost" id="copyBtn">Copy result</button></div>
+    <p class="next">Next expedition in <b id="countdown">--:--:--</b></p>`;
+  $("shareImg").onclick = () => { SFX.play("tick"); shareImage(); };
+  $("copyBtn").onclick = () => { SFX.play("tick"); copyResult(); };
+  drawGlobe($("globe"), C.ll[0], C.ll[1]);
+  tick();
+}
+
+function record() {
+  if (stats.lastPlayed === N) return;
+  stats.played++; stats.lastPlayed = N;
+  if (day.status === "won") {
+    stats.won++;
+    stats.streak = stats.lastWon === N - 1 ? stats.streak + 1 : 1;
+    stats.lastWon = N;
+    stats.max = Math.max(stats.max, stats.streak);
+    stats.dist[day.guesses.length - 1]++;
+  } else {
+    stats.streak = 0;
+  }
+  store.set("geoclue-stats", stats);
+}
+
+function submitGuess(text) {
+  const inp = $("guess"), v = (text ?? inp.value).trim();
+  if (!v) { say("Start typing a country", true); return; }
+  const name = resolve(v);
+  if (!name) { say("Pick a country from the list", true); SFX.play("tick"); return; }
+  if (day.guesses.some(g => g.t === name)) { say("You've already been there", true); SFX.play("tick"); return; }
+  const ok = name === C.n;
+  day.guesses.push({t: name, ok});
+  if (ok) day.status = "won";
+  else if (wrongCount() >= MAX) day.status = "lost";
+  store.set(DAYKEY, day);
+  inp.value = "";
+  SFX.play("pin");
+  setTimeout(() => SFX.play("stamp"), 120);
+  if (day.status !== "playing") {
+    record(); render();
+    setTimeout(() => SFX.play(ok ? "win" : "lose"), 300);
+    if (ok) toast(pick(["Destination reached!","Spot on, explorer!","X marks the spot!","Map master!"]));
+    return;
+  }
+  const left = MAX - wrongCount();
+  say(`${pick(["Off course!","Wrong turn!","Not on this map!","Keep exploring!"])} ${left} ${left === 1 ? "pin" : "pins"} left, new clue unlocked.`);
+  setTimeout(() => SFX.play("wrong"), 200);
+  needle("spin");
+  const f = $("frame"); f.classList.remove("shake"); void f.offsetWidth; f.classList.add("shake");
+  render();
+}
+
+/* ---------- Type-ahead country list ---------- */
+let acItems = [], acActive = -1;
+function acSearch(q) {
+  const t = norm(q); if (!t) return [];
+  const used = new Set(day.guesses.map(g => g.t));
+  return PICKS.map(p => {
+    if (used.has(p.name)) return null;
+    const i = p.n.indexOf(t);
+    let r = i === 0 ? 0 : (i > 0 && p.n[i - 1] === " ") ? 1 : 9;
+    if (r === 9 && p.alts.some(a => a.startsWith(t))) r = 2;
+    return r < 9 ? {name: p.name, r} : null;
+  }).filter(Boolean).sort((a, b) => a.r - b.r || a.name.localeCompare(b.name)).slice(0, 6).map(h => h.name);
+}
+function highlight(t, q) {
+  const words = norm(q).split(" ").filter(Boolean); if (!words.length) return esc(t);
+  const re = new RegExp("(" + words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "ig");
+  return esc(t).replace(re, "<mark>$1</mark>");
+}
+function acRender() {
+  const list = $("acList"), q = $("guess").value;
+  acItems = day.status === "playing" ? acSearch(q) : [];
+  acActive = -1;
+  if (!acItems.length) { list.hidden = true; $("guess").setAttribute("aria-expanded", "false"); return; }
+  list.innerHTML = acItems.map((t, i) => `<li role="option" id="ac-${i}" aria-selected="false" data-i="${i}"><span>${highlight(t, q)}</span></li>`).join("");
+  list.hidden = false; $("guess").setAttribute("aria-expanded", "true");
+}
+function acClose() { acItems = []; acActive = -1; $("acList").hidden = true; $("guess").setAttribute("aria-expanded", "false"); $("guess").removeAttribute("aria-activedescendant"); }
+function acMove(d) {
+  if (!acItems.length) return;
+  acActive = (acActive + d + acItems.length) % acItems.length;
+  $("acList").querySelectorAll("li").forEach((li, i) => li.setAttribute("aria-selected", i === acActive));
+  $("guess").setAttribute("aria-activedescendant", "ac-" + acActive);
+  SFX.play("tick");
+}
+function acChoose(i) { const name = acItems[i]; acClose(); submitGuess(name); }
+
+function renderStats() {
+  const s = stats, pct = s.played ? Math.round(s.won / s.played * 100) : 0;
+  $("statsGrid").innerHTML = [["Trips", s.played], ["Found %", pct], ["Streak", streakNow()], ["Best", s.max]]
+    .map(([l, v]) => `<div><b>${v}</b><span>${l}</span></div>`).join("");
+  const mx = Math.max(1, ...s.dist);
+  $("dist").innerHTML = s.dist.map((v, i) => `<div class="bar"><span>${i + 1}</span><i class="${day.status === "won" && day.guesses.length === i + 1 ? "hl" : ""}" style="width:${Math.max(8, v / mx * 90)}%">${v}</i></div>`).join("");
+}
+
+function shareText() {
+  const sq = Array.from({length: MAX}, (_, i) => i < day.guesses.length ? (day.guesses[i].ok ? "🟩" : "🟥") : "⬜").join("");
+  const s = streakNow();
+  return `🧭 Geo Clue #${N} ${day.status === "won" ? day.guesses.length : "X"}/${MAX}\n${sq}${s > 1 ? `\n🔥 ${s} day streak` : ""}\nhttps://${SITE}/`;
+}
+async function copyResult() {
+  const t = shareText();
+  try { await navigator.clipboard.writeText(t); }
+  catch (e) { const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  toast("Copied to clipboard");
+}
+
+function tick() {
+  const el = $("countdown"); if (!el) return;
+  const s = secsToReset();
+  el.textContent = [s / 3600 | 0, (s % 3600) / 60 | 0, s % 60].map(v => String(v).padStart(2, "0")).join(":");
+  if (s <= 1) setTimeout(() => location.reload(), 1500);
+}
+
+/* ---------- Spinning globe on the result card ---------- */
+const libsReady = () => new Promise(r => {
+  if (window.d3 && window.topojson) return r(true);
+  if (document.readyState === "complete") return r(false);
+  window.addEventListener("load", () => r(!!(window.d3 && window.topojson)), {once: true});
+});
+let landP;
+async function drawGlobe(el, lat, lon) {
+  if (!el) return;
+  if (!(await libsReady())) { el.remove(); return; }
+  if (!landP) landP = fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json")
+    .then(r => r.json()).then(t => topojson.feature(t, t.objects.land)).catch(() => null);
+  const land = await landP;
+  if (!land || !el.isConnected) { el.remove(); return; }
+  const S = 200, R = S / 2 - 4;
+  const proj = d3.geoOrthographic().scale(R).translate([S / 2, S / 2]).clipAngle(90), path = d3.geoPath(proj);
+  const svg = d3.select(el).append("svg").attr("viewBox", `0 0 ${S} ${S}`);
+  svg.append("circle").attr("class", "g-sea").attr("cx", S / 2).attr("cy", S / 2).attr("r", R);
+  const grat = svg.append("path").attr("class", "g-grat").datum(d3.geoGraticule10());
+  const ld = svg.append("path").attr("class", "g-land").datum(land);
+  svg.append("circle").attr("class", "g-out").attr("cx", S / 2).attr("cy", S / 2).attr("r", R);
+  const pin = svg.append("g").style("opacity", 0).attr("transform", `translate(${S / 2},${S / 2})`);
+  pin.append("circle").attr("class", "g-pulse").attr("r", 7);
+  pin.append("circle").attr("class", "g-dot").attr("r", 4.5);
+  const end = [-lon, -lat], it = d3.interpolate([end[0] + 200, 8], end), dur = 2000, t0 = performance.now();
+  const draw = k => { proj.rotate(it(k)); grat.attr("d", path); ld.attr("d", path); };
+  (function step(now) {
+    const k = Math.min(1, (now - t0) / dur);
+    draw(d3.easeCubicInOut(k));
+    if (k < 1) requestAnimationFrame(step);
+    else pin.transition().duration(400).style("opacity", 1);
+  })(t0);
+}
+
+/* ---------- Canvas drawing (share image + og-image) ---------- */
+async function fontsReady() {
+  try { await Promise.all(["400 100px 'DM Serif Display'", "italic 400 50px 'DM Serif Display'", "500 30px 'DM Mono'", "400 30px 'DM Mono'"].map(f => document.fonts.load(f))); } catch (e) {}
+}
+function rrect(x, a, b, w, h, r) {
+  x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r);
+  x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath();
+}
+function bgOcean(x, W, H) {
+  const g = x.createRadialGradient(W / 2, 0, 0, W / 2, 0, H * 1.1);
+  g.addColorStop(0, "#135064"); g.addColorStop(.5, "#0b2733"); g.addColorStop(1, "#061a24");
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+}
+function neatline(x, X, Y, W, H) {
+  const t = 10, seg = 28;
+  for (let i = 0; i * seg < W; i++) { x.fillStyle = i % 2 ? "#0b2733" : "#f3e3c3"; const w = Math.min(seg, W - i * seg); x.fillRect(X + i * seg, Y, w, t); x.fillRect(X + i * seg, Y + H - t, w, t); }
+  for (let j = 0; j * seg < H; j++) { x.fillStyle = j % 2 ? "#0b2733" : "#f3e3c3"; const h = Math.min(seg, H - j * seg); x.fillRect(X, Y + j * seg, t, h); x.fillRect(X + W - t, Y + j * seg, t, h); }
+  const ix = X + t + 6, iy = Y + t + 6, iw = W - 2 * (t + 6), ih = H - 2 * (t + 6);
+  x.fillStyle = "#0b2733"; x.fillRect(X + t, Y + t, W - 2 * t, H - 2 * t);
+  x.fillStyle = "#0e2f3d"; x.fillRect(ix, iy, iw, ih);
+  x.lineWidth = 2; x.strokeStyle = "#f3e3c3"; x.strokeRect(X, Y, W, H); x.strokeRect(ix, iy, iw, ih);
+  x.save(); x.beginPath(); x.rect(ix, iy, iw, ih); x.clip();
+  x.strokeStyle = "rgba(255,255,255,.045)"; x.lineWidth = 1.5;
+  for (let k = 1; k < 6; k++) { x.beginPath(); x.moveTo(ix, iy + ih * k / 6); x.lineTo(ix + iw, iy + ih * k / 6); x.stroke(); }
+  for (let k = 1; k < 8; k++) { x.beginPath(); x.moveTo(ix + iw * k / 8, iy); x.lineTo(ix + iw * k / 8, iy + ih); x.stroke(); }
+  x.strokeStyle = "rgba(255,255,255,.06)";
+  [[.18, .22, -.35], [.84, .8, .4]].forEach(([fx, fy, rot]) => {
+    for (let k = 1; k <= 4; k++) { x.beginPath(); x.ellipse(ix + iw * fx + k * 3, iy + ih * fy - k * 2, iw * .07 * k, ih * .06 * k, rot, 0, Math.PI * 2); x.stroke(); }
+  });
+  x.restore();
+  return {ix, iy, iw, ih};
+}
+function compassRose(x, cx, cy, r, alpha) {
+  x.save(); x.globalAlpha = alpha || 1; x.translate(cx, cy);
+  x.strokeStyle = "#f3e3c3"; x.lineWidth = 2; x.beginPath(); x.arc(0, 0, r, 0, Math.PI * 2); x.stroke();
+  x.lineWidth = 1; x.beginPath(); x.arc(0, 0, r * .82, 0, Math.PI * 2); x.stroke();
+  for (let i = 0; i < 32; i++) {
+    const a = i * Math.PI / 16, l = i % 8 === 0 ? r * .16 : i % 2 ? r * .05 : r * .09;
+    x.beginPath(); x.moveTo(Math.sin(a) * r, -Math.cos(a) * r); x.lineTo(Math.sin(a) * (r - l), -Math.cos(a) * (r - l)); x.stroke();
+  }
+  const point = (a, len, w, light, dark) => {
+    x.save(); x.rotate(a);
+    x.beginPath(); x.moveTo(0, -len); x.lineTo(w, 0); x.lineTo(0, 0); x.closePath(); x.fillStyle = light; x.fill();
+    x.beginPath(); x.moveTo(0, -len); x.lineTo(-w, 0); x.lineTo(0, 0); x.closePath(); x.fillStyle = dark; x.fill();
+    x.restore();
+  };
+  for (let i = 1; i < 8; i += 2) point(i * Math.PI / 4, r * .45, r * .09, "#f3e3c3", "#c9b48f");
+  for (let i = 0; i < 4; i++) point(i * Math.PI / 2, r * .78, r * .14, i === 0 ? "#e4572e" : "#f3e3c3", i === 0 ? "#b8401f" : "#c9b48f");
+  x.beginPath(); x.arc(0, 0, r * .06, 0, Math.PI * 2); x.fillStyle = "#0b2733"; x.fill();
+  x.restore();
+}
+function text(x, t, cx, y, font, fill, ls) {
+  x.font = font; x.fillStyle = fill; x.textAlign = "center"; x.textBaseline = "alphabetic";
+  if ("letterSpacing" in x) x.letterSpacing = ls || "0px";
+  x.fillText(t, cx, y);
+  if ("letterSpacing" in x) x.letterSpacing = "0px";
+}
+function gradTitle(x, t, cx, y, size) {
+  const font = `400 ${size}px 'DM Serif Display',Georgia,serif`; x.font = font;
+  const w = x.measureText(t).width, g = x.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0);
+  g.addColorStop(0, "#a855f7"); g.addColorStop(1, "#ec4899");
+  text(x, t, cx, y, font, g);
+}
+function footerLine(x, cx, y, size) {
+  const a = "A new daily geography puzzle from ", b = "Puzzl Lab";
+  const fa = `400 ${size}px 'DM Mono',monospace`, fb = `500 ${size}px 'DM Mono',monospace`;
+  x.font = fa; const wa = x.measureText(a).width; x.font = fb; const wb = x.measureText(b).width;
+  const sx = cx - (wa + wb) / 2; x.textAlign = "left";
+  x.font = fa; x.fillStyle = "#9fb8bd"; x.fillText(a, sx, y);
+  x.font = fb; x.fillStyle = "#ffffff"; x.fillText(b, sx + wa, y);
+}
+function pill(x, t, cx, y, h, size) {
+  const font = `400 ${size}px 'DM Serif Display',Georgia,serif`; x.font = font;
+  const w = x.measureText(t).width + h;
+  rrect(x, cx - w / 2, y, w, h, h / 2); x.fillStyle = "#0b2733"; x.fill(); x.strokeStyle = "rgba(243,227,195,.55)"; x.lineWidth = 2; x.stroke();
+  text(x, t, cx, y + h / 2 + size * .35, font, "#f3e3c3");
+  return w;
+}
+function stampDraw(x, t, cx, cy, rot, col, size) {
+  x.save(); x.translate(cx, cy); x.rotate(rot);
+  x.font = `500 ${size}px 'DM Mono',monospace`;
+  if ("letterSpacing" in x) x.letterSpacing = `${size * .2}px`;
+  const w = x.measureText(t).width + size * 2, h = size * 2.4;
+  x.strokeStyle = col; x.lineWidth = size * .16; rrect(x, -w / 2, -h / 2, w, h, size * .4); x.stroke();
+  x.lineWidth = size * .06; rrect(x, -w / 2 + size * .35, -h / 2 + size * .35, w - size * .7, h - size * .7, size * .25); x.stroke();
+  x.fillStyle = col; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(t, size * .1, 2);
+  if ("letterSpacing" in x) x.letterSpacing = "0px";
+  x.textBaseline = "alphabetic"; x.restore();
+}
+function cornerLabels(x, b, size) {
+  x.font = `400 ${size}px 'DM Mono',monospace`; x.fillStyle = "rgba(243,227,195,.55)";
+  x.textAlign = "left"; x.fillText("0°N 0°E", b.ix + 16, b.iy + size + 12);
+  x.textAlign = "right"; x.fillText("51.5°N 0.1°W", b.ix + b.iw - 16, b.iy + b.ih - 14);
+}
+
+async function drawShare() {
+  await fontsReady();
+  const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const x = cv.getContext("2d");
+  bgOcean(x, W, H);
+  const b = neatline(x, 60, 60, 960, 1230);
+  cornerLabels(x, b, 22);
+  const won = day.status === "won", n = day.guesses.length, st = streakNow();
+  compassRose(x, 540, 215, 72);
+  text(x, `EXPEDITION NO. ${N}`, 540, 335, "500 30px 'DM Mono',monospace", "#f5d08a", "10px");
+  gradTitle(x, "Geo Clue", 540, 470, 140);
+  text(x, "Where in the world?", 540, 540, "italic 400 52px 'DM Serif Display',Georgia,serif", "#f3e3c3");
+  stampDraw(x, won ? `FOUND IN ${n}` : "LOST AT SEA", 540, 668, -0.08, won ? "#2dd4bf" : "#f0866a", 34);
+  const s = 116, gap = 20, sx = 540 - (MAX * s + (MAX - 1) * gap) / 2;
+  for (let i = 0; i < MAX; i++) {
+    rrect(x, sx + i * (s + gap), 770, s, s, 20);
+    x.fillStyle = i < n ? (day.guesses[i].ok ? "#2dd4bf" : "#e4572e") : "#12404f"; x.fill();
+  }
+  text(x, won ? (st > 1 ? `${st} DAY STREAK` : `CLUES USED: ${n} OF ${MAX}`) : "FIVE CLUES WEREN'T ENOUGH", 540, 965, "500 32px 'DM Mono',monospace", "#f3e3c3", "4px");
+  pill(x, "“Can you find it faster?”", 540, 1020, 86, 40);
+  text(x, SITE, 540, 1175, "400 28px 'DM Mono',monospace", "#9fb8bd");
+  footerLine(x, 540, 1328, 26);
+  return cv;
+}
+async function shareImage() {
+  const cv = await drawShare();
+  const blob = await new Promise(r => cv.toBlob(r, "image/png"));
+  const file = new File([blob], `geo-clue-${N}.png`, {type: "image/png"});
+  if (navigator.canShare && navigator.canShare({files: [file]})) {
+    try { await navigator.share({files: [file], text: shareText()}); } catch (e) {}
+    return;
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast("Image saved");
+}
+
+async function drawOG() {
+  await fontsReady();
+  const W = 1200, H = 630, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const x = cv.getContext("2d");
+  bgOcean(x, W, H);
+  const b = neatline(x, 110, 46, 980, 536);
+  cornerLabels(x, b, 15);
+  compassRose(x, 250, 300, 62, .55);
+  compassRose(x, 950, 300, 62, .55);
+  text(x, "TODAY'S DESTINATION", 600, 138, "500 22px 'DM Mono',monospace", "#f5d08a", "8px");
+  gradTitle(x, "Geo Clue", 600, 255, 118);
+  text(x, "Where in the world?", 600, 318, "italic 400 44px 'DM Serif Display',Georgia,serif", "#f3e3c3");
+  text(x, "Five clues. One country. Every day.", 600, 368, "italic 400 30px 'DM Serif Display',Georgia,serif", "#9fb8bd");
+  const pills = ["“Two co-princes”", "“Half the world's cork”", "“Happiness over GDP”"];
+  x.font = "400 24px 'DM Serif Display',Georgia,serif";
+  const ws = pills.map(p => x.measureText(p).width + 52), total = ws.reduce((a, c) => a + c, 0) + 32;
+  let px = 600 - total / 2;
+  pills.forEach((p, i) => { pill(x, p, px + ws[i] / 2, 402, 52, 24); px += ws[i] + 16; });
+  footerLine(x, 600, 612, 20);
+  return cv;
+}
+
+/* ---------- Start ---------- */
+function init() {
+  soundIcon();
+  render();
+  $("form").addEventListener("submit", e => { e.preventDefault(); if (acActive >= 0) acChoose(acActive); else { acClose(); submitGuess(); } });
+  $("guess").addEventListener("input", acRender);
+  $("guess").addEventListener("keydown", e => {
+    if (e.key === "ArrowDown") { e.preventDefault(); acMove(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); acMove(-1); }
+    else if (e.key === "Escape") acClose();
+  });
+  $("guess").addEventListener("blur", () => setTimeout(acClose, 150));
+  $("acList").addEventListener("mousedown", e => e.preventDefault());
+  $("acList").addEventListener("click", e => { const li = e.target.closest("li"); if (li) acChoose(+li.dataset.i); });
+  $("needle").addEventListener("animationend", e => { if (e.animationName === "spin") $("needle").classList.remove("spin"); });
+  $("soundBtn").onclick = () => { SFX.on = !SFX.on; store.set("geoclue-sound", SFX.on); soundIcon(); SFX.play("tick"); };
+  $("helpBtn").onclick = () => openM("helpModal");
+  $("statsBtn").onclick = () => { renderStats(); openM("statsModal"); };
+  document.querySelectorAll(".modal").forEach(m => m.addEventListener("click", e => {
+    if (e.target === m || e.target.closest("[data-close]")) m.classList.remove("open");
+  }));
+  if (!store.get("geoclue-seen", false)) { $("helpModal").classList.add("open"); store.set("geoclue-seen", true); }
+  setInterval(tick, 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && puzzleNo() !== N) location.reload(); });
+}
+
+if (new URLSearchParams(location.search).has("og")) {
+  document.body.innerHTML = '<div class="og"><p class="kicker" style="margin-bottom:12px">og-image · 1200×630</p><div id="ogc"></div><button class="btn" id="ogdl" style="margin-top:16px">Download og-image.png</button></div>';
+  drawOG().then(cv => {
+    $("ogc").appendChild(cv);
+    $("ogdl").onclick = () => cv.toBlob(b => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "og-image.png"; a.click(); }, "image/png");
+  });
+} else {
+  init();
+}
+</script>
+</body>
+</html>
